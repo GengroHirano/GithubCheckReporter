@@ -11,6 +11,7 @@ import json
 import requests
 import pprint
 
+from . import diff_parser
 from . import hunk_parser
 from config import mock_config
 
@@ -67,7 +68,7 @@ class Github():
         Generate pull files url
         HOST/repos/:owner/:repo/pulls/:num/files
         """
-        return "{pulls_url}/{num}/files".format(
+        return "{pulls_url}/{num}".format(
             pulls_url=self._generate_pulls_url(),
             num=self._pull_info[0]['number']
         )
@@ -75,18 +76,38 @@ class Github():
 
     def _get_pulls_file(self):
         url = self._generate_pull_files_url()
-        print(url)
         r = requests.get(url, headers=self._headers)
         if r.status_code == 200:
             self._pull_files_info = json.loads(r.text)
             # pprint.pprint(self._pull_files_info)
+
+    def _generate_self_url(self):
+        """
+        Generate review comment url
+        HOST/repos/:owner/:repo/pulls/:num
+        """
+        return self._pull_info[0]['_links']['self']['href']
+
+    def _get_diff_data(self):
+        url = self._generate_self_url()
+        r = requests.get(url, headers=self._headers)
+
+        diff_url = None
+        if r.status_code == 200:
+            data = json.loads(r.text)
+            diff_url = data['diff_url']
+
+        if diff_url is not None:
+            r = requests.get(diff_url, headers=self._headers)
+            if r.status_code == 200:
+                return r.text
 
     def _generate_review_comment_url(self):
         """
         Generate review comment url
         HOST/repos/:owner/:repo/pulls/:num/comments
         """
-        return self._pull_info[0]['_links']['commits']['href']
+        return self._pull_info[0]['_links']['comments']['href']
         # return "{base}/repos/{owner}/{repos}/pulls/9/reviews".format(base=BASE_URL, owner=ORG, repos=REPO)
 
     def _generate_comment_url(self):
@@ -110,23 +131,27 @@ class Github():
 
 
     def dump_infos(self, path, line):
-        # hunk_parser.prity_print(self._pull_info)
-        # relative_line = hunk_parser.parse(path, line, self._pull_files_info)
-        hunk_parser.print_hunk_graph(self._pull_files_info)
+        data = self._get_diff_data()
+        hunk_data = diff_parser.parse(data, path)
+        relative_line = hunk_parser.parse(path, line, hunk_data)
+        print("=====================")
+        # hunk_parser.print_hunk_graph(hunk_data)
         print(relative_line)
 
     def review_comment(self, comment, line, path):
         """ Post review comment for this PR """
         url = self._generate_review_comment_url()
         commit_id = self.COMMIT_ID
-        relative_line = hunk_parser.parse(path, line, self._pull_files_info)
+        data = self._get_diff_data()
+        hunk_data = diff_parser.parse(data, path)
+        relative_line = hunk_parser.parse(path, line, hunk_data)
         if relative_line <= 0:
             print("line not fund")
             return
-        print(relative_line)
-        # data = json.dumps({'body': comment, 'commit_id': commit_id, 'path': path, 'position':relative_line})
-        # r = requests.post(url, headers=self._headers, data=data)
-        # print(r.text)
+        print(url)
+        data = json.dumps({'body': comment, 'commit_id': commit_id, 'path': path, 'position':relative_line})
+        r = requests.post(url, headers=self._headers, data=data)
+        print(r.text)
 
     def issue_comment(self, comment):
         """ Post issue comment for this PR """

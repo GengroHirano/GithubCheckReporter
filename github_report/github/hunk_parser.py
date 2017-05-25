@@ -11,7 +11,7 @@ def _hunk_graph(patch_data):
     相対的な行数(hunk内での行数), 追加変更の行数(add), 削除変更の行数(delete)を求める
     他にもpath_dataに対してhunk headerを求める処理も入れているのでLineクラスを作ったほうが良いかも
     """
-    diff_text = patch_data.split('\n')
+    diff_text = patch_data
     relative_line = []
     additional_line = []
     delete_line = []
@@ -52,10 +52,10 @@ def _hunk_graph(patch_data):
         if result is not None:
             real_line_number = re.search("(?<=\+)(.*)", result.group(0))
             real_line_section.append(real_line_number.group(0).split(",")[0])
-            hunk_header_hit_count += 1
             if line_number == 0:
                 offset_hunk.append(0)
             else:
+                hunk_header_hit_count += 1
                 offset_hunk.append(line_number - hunk_header_hit_count)
             continue
 
@@ -67,88 +67,89 @@ def _hunk_graph(patch_data):
 
 # TODO ロジックに無駄が有りすぎて…助けてくれ
 def parse(path, real_line_number, hunk_data):
-    for hunk in hunk_data:
-        if hunk == '':
-            continue
-        if hunk['filename'] != path:
-            continue
+    hunk = hunk_data
+    if hunk == None:
+        return
+    if hunk['filename'] != path:
+        return
 
-        print(hunk['filename'])
-        relative_line, additional_line, delete_line, real_line_section, offset_hunk = _hunk_graph(hunk['patch'])
+    print("filename {0}".format(hunk['filename']))
+    relative_line, additional_line, delete_line, real_line_section, offset_hunk = _hunk_graph(hunk['patch'])
 
-        """
-        実際に変更があった行数から変更があった行数を差し引き相対的な行数を求める
-        print_hunk_graphで確認してみると良い
-        """
-        print(real_line_section)
-        print("real line {0}".format(real_line_number))
-        print("offset hunk {0}".format(offset_hunk))
+    """
+    実際に変更があった行数から変更があった行数を差し引き相対的な行数を求める
+    print_hunk_graphで確認してみると良い
+    """
+    print(real_line_section)
+    print("real line {0}".format(real_line_number))
+    print("offset hunk {0}".format(offset_hunk))
 
-        index_offset = 0
-        for section_index in range(0, len(real_line_section)):
-            if section_index == len(real_line_section) - 1:
-                index_offset = section_index
-                break
-            if int(real_line_number) in range(int(real_line_section[section_index])):
-                break
-            index_offset += 1
+    index_offset = 0
+    for section_index in range(0, len(real_line_section)):
+        if section_index == len(real_line_section):
+            index_offset = section_index
+            break
+        if int(real_line_number) in range(int(real_line_section[section_index])):
+            break
+        index_offset += 1
 
-        line_index = int(real_line_number) - int(real_line_section[index_offset -1])
-        print("index_offset {0}".format(index_offset))
-        offset = sum(offset_hunk[0:index_offset + 1])
-        if offset == 0:
-            line_index += 1
-        else:
-            line_index += offset
-        print("offset {0}".format(offset))
-        print("line_index {0}".format(line_index))
-        return additional_line[relative_line[line_index]]
+    line_index = int(real_line_number) - int(real_line_section[index_offset -1])
+    print("pre_offset_line_index {0}".format(line_index))
+    print("index_offset {0}".format(index_offset))
+    offset = offset_hunk[index_offset - 1]
+    if offset == 0:
+        line_index += 1
+    else:
+        line_index += offset
+    print("offset {0}".format(offset))
+    print("line_index {0}".format(line_index))
+    return additional_line[relative_line[line_index]]
 
 def print_hunk_graph(hunk_data):
-    for hunk in hunk_data:
-        if hunk == '':
-            return
-        print(hunk['filename'])
+    hunk = hunk_data
+    if hunk == None:
+        return
+    print("filename {0}".format(hunk['filename']))
 
-        diff_text = hunk['patch'].split('\n')
-        relative_line = []
+    diff_text = hunk['patch']
+    relative_line = []
 
-        additional_line = []
-        offset_additional_line = []
-        additional_offset = 0
+    additional_line = []
+    offset_additional_line = []
+    additional_offset = 0
 
-        delete_line = []
-        offset_delete_line = []
-        delete_offset = 0
+    delete_line = []
+    offset_delete_line = []
+    delete_offset = 0
 
-        for line_number in range(0, len(diff_text)):
-            relative_line.append(line_number)
-            print(diff_text[line_number])
-            if re.match("^\+(?!\+|\+)",diff_text[line_number]):
-                # 本ちゃん
-                additional_line.append(line_number)
-                # デバッグ用に見やすくしてるやつ
-                offset_additional_line.append(line_number - additional_offset)
-                offset_delete_line.append('-')
-                delete_offset += 1
-            elif re.match("^\-(?!\-|\-)",diff_text[line_number]):
-                # 本ちゃん
-                delete_line.append(line_number)
-                # デバッグ用に見やすくしてるやつ
-                offset_delete_line.append(line_number - delete_offset)
-                offset_additional_line.append('+')
-                additional_offset += 1
-            else:
-                # 本ちゃん
-                additional_line.append(line_number)
-                delete_line.append(line_number)
-                # デバッグ用に見やすくしてるやつ
-                offset_additional_line.append(line_number - additional_offset)
-                offset_delete_line.append(line_number - delete_offset)
+    for line_number in range(0, len(diff_text)):
+        relative_line.append(line_number)
+        print(diff_text[line_number])
+        if re.match("^\+(?!\+|\+)",diff_text[line_number]):
+            # 本ちゃん
+            additional_line.append(line_number)
+            # デバッグ用に見やすくしてるやつ
+            offset_additional_line.append(line_number - additional_offset)
+            offset_delete_line.append('-')
+            delete_offset += 1
+        elif re.match("^\-(?!\-|\-)",diff_text[line_number]):
+            # 本ちゃん
+            delete_line.append(line_number)
+            # デバッグ用に見やすくしてるやつ
+            offset_delete_line.append(line_number - delete_offset)
+            offset_additional_line.append('+')
+            additional_offset += 1
+        else:
+            # 本ちゃん
+            additional_line.append(line_number)
+            delete_line.append(line_number)
+            # デバッグ用に見やすくしてるやつ
+            offset_additional_line.append(line_number - additional_offset)
+            offset_delete_line.append(line_number - delete_offset)
 
-        print("_付きはデバッグ用だったりするのねん")
-        print("line: {line}".format(line=relative_line))
-        print("add_: {line}".format(line=offset_additional_line))
-        print("del_: {line}".format(line=offset_delete_line))
-        print("add : {line}".format(line=additional_line))
-        print("del : {line}".format(line=delete_line))
+    print("_付きはデバッグ用だったりするのねん")
+    print("line: {line}".format(line=relative_line))
+    print("add_: {line}".format(line=offset_additional_line))
+    print("del_: {line}".format(line=offset_delete_line))
+    print("add : {line}".format(line=additional_line))
+    print("del : {line}".format(line=delete_line))
