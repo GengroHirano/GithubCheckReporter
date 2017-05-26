@@ -18,7 +18,7 @@ def _hunk_graph(patch_data):
     real_line_section = []
     offset_hunk = []
 
-    hunk_header_hit_count = 0
+    # hunk_header_hit_count = 0
     for line_number in range(0, len(diff_text)):
         # print(diff_text[line_number])
         """
@@ -44,9 +44,6 @@ def _hunk_graph(patch_data):
         一行ずつ探索しリスト形式にした後に数値を取り出す
         [@@ -47,10 +47,10 @@, @@ -77,7 +77,7 @@]
         section = [47, 77]
-
-        hunk headerはoffsetを割り出すための行数に含めない
-        offset_hunk = [0, {15 - hunk_header_hit_count}, ..., {n - hunk_header_hit_count}]
         """
         result = re.search("@@.+?@@", diff_text[line_number])
         if result is not None:
@@ -55,8 +52,8 @@ def _hunk_graph(patch_data):
             if line_number == 0:
                 offset_hunk.append(0)
             else:
-                hunk_header_hit_count += 1
-                offset_hunk.append(line_number - hunk_header_hit_count)
+                # hunk_header_hit_count += 1
+                offset_hunk.append(line_number)
             continue
 
 
@@ -90,11 +87,16 @@ def parse(path, real_line_number, hunk_data):
         offset_index += 1
 
     line_index = int(real_line_number) - int(real_line_section[offset_index -1])
+    print("line index {0}".format(line_index))
+    print("real line number {0}".format(real_line_number))
+    print("real_line_section {0}".format(real_line_section))
     offset = offset_hunk[offset_index - 1]
     if offset == 0:
         line_index += 1
     else:
         line_index += offset
+    print("offset_hunk {0}".format(offset_hunk))
+
     return additional_line[relative_line[line_index]]
 
 def print_hunk_graph(hunk_data):
