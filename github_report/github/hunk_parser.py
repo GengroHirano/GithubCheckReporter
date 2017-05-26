@@ -87,15 +87,15 @@ def parse(path, real_line_number, hunk_data):
         offset_index += 1
 
     line_index = int(real_line_number) - int(real_line_section[offset_index -1])
-    print("line index {0}".format(line_index))
-    print("real line number {0}".format(real_line_number))
-    print("real_line_section {0}".format(real_line_section))
+    #print("line index {0}".format(line_index))
+    #print("real line number {0}".format(real_line_number))
+    #print("real_line_section {0}".format(real_line_section))
     offset = offset_hunk[offset_index - 1]
     if offset == 0:
         line_index += 1
     else:
         line_index += offset
-    print("offset_hunk {0}".format(offset_hunk))
+    #print("offset_hunk {0}".format(offset_hunk))
 
     return additional_line[relative_line[line_index]]
 
