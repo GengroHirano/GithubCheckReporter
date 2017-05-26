@@ -60,8 +60,8 @@ def _hunk_graph(patch_data):
             continue
 
 
-    print(relative_line)
-    print(additional_line)
+    # print(relative_line)
+    # print(additional_line)
     # print(delete_line)
     return relative_line, additional_line, delete_line, real_line_section, offset_hunk
 
@@ -80,29 +80,21 @@ def parse(path, real_line_number, hunk_data):
     実際に変更があった行数から変更があった行数を差し引き相対的な行数を求める
     print_hunk_graphで確認してみると良い
     """
-    print(real_line_section)
-    print("real line {0}".format(real_line_number))
-    print("offset hunk {0}".format(offset_hunk))
-
-    index_offset = 0
+    offset_index = 0
     for section_index in range(0, len(real_line_section)):
         if section_index == len(real_line_section):
-            index_offset = section_index
+            offset_index = section_index
             break
         if int(real_line_number) in range(int(real_line_section[section_index])):
             break
-        index_offset += 1
+        offset_index += 1
 
-    line_index = int(real_line_number) - int(real_line_section[index_offset -1])
-    print("pre_offset_line_index {0}".format(line_index))
-    print("index_offset {0}".format(index_offset))
-    offset = offset_hunk[index_offset - 1]
+    line_index = int(real_line_number) - int(real_line_section[offset_index -1])
+    offset = offset_hunk[offset_index - 1]
     if offset == 0:
         line_index += 1
     else:
         line_index += offset
-    print("offset {0}".format(offset))
-    print("line_index {0}".format(line_index))
     return additional_line[relative_line[line_index]]
 
 def print_hunk_graph(hunk_data):

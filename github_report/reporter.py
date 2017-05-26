@@ -14,18 +14,11 @@ for line in sys.stdin:
         line = element.get('line')
         path = element.get('path')
         message = element.get('message')
-        message = "良いのか〜？\n{0}".format(message)
+        level = element.get('severity')
+        body = "指摘点です\n[{0}]: {1}".format(level.upper(), message)
         github.review_comment(
             path=path,
-            comment=message,
+            comment=body,
             line=line
         )
         # github.dump_infos(path=path, line=line)
-
-        # github.dump_infos(path, line)
-        # issue_message = "path: {path} \n line: {line} \n message={message}".format(
-        #     path=path,
-        #     line=line,
-        #     message=message
-        # )
-        # github.issue_comment(comment=issue_message)

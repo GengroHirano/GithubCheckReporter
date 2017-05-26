@@ -21,6 +21,7 @@ __all__ = ['Github']
 BASE_URL = "https://api.github.com"
 GET_PULLURL_TMP = "{base_url}/repos/{org}/{repo}/pulls"
 CACHE_FILE = '/tmp/github_pull_info'
+CACHE_DIFF_DATA = '/tmp/github_diff'
 
 class Github():
     def __init__(self, config):
@@ -32,17 +33,22 @@ class Github():
         self.branch = config.branch
 
         self._pull_info = None
+        self._diff_info = None
         self._pull_files_info = None
 
         self._headers = {'Content-Type': 'application/json',
                          'Authorization': 'token ' + self.TOKEN}
         if os.path.isfile(CACHE_FILE):
-            self._read_cache()
+            self._read_pull_info_cache()
         else:
             self._get_pull_info()
-            self._write_cache()
+            self._write_cache(CACHE_FILE, json.dumps(self._pull_info))
 
-        self._get_pulls_file()
+        if os.path.isfile(CACHE_DIFF_DATA):
+            self._read_diff_cache()
+        else:
+            self._get_diff_data()
+            self._write_cache(CACHE_DIFF_DATA, self._diff_info)
 
     def _generate_pulls_url(self):
         """
@@ -100,7 +106,7 @@ class Github():
         if diff_url is not None:
             r = requests.get(diff_url, headers=self._headers)
             if r.status_code == 200:
-                return r.text
+                self._diff_info = r.text
 
     def _generate_review_comment_url(self):
         """
@@ -117,41 +123,46 @@ class Github():
         """
         return self._pull_info[0]['issue_url'] + '/comments'
 
-    def _write_cache(self):
-        with open(CACHE_FILE, 'w') as f:
-            f.write(json.dumps(self._pull_info))
+    def _write_cache(self, cache, data):
+        with open(cache, 'w') as f:
+            f.write(data)
             f.flush()
 
-    def _read_cache(self):
+    def _read_pull_info_cache(self):
         l = None
         with open(CACHE_FILE, 'r') as f:
             l = f.readlines()[0]
         if l and self._pull_info == None:
             self._pull_info = json.loads(l)
 
+    def _read_diff_cache(self):
+        l = None
+        with open(CACHE_DIFF_DATA, 'r') as f:
+            l = "".join(f.readlines())
+        print(l)
+        if l and self._diff_info == None:
+            self._diff_info = l
 
     def dump_infos(self, path, line):
-        data = self._get_diff_data()
+        data = self._diff_info
         hunk_data = diff_parser.parse(data, path)
         relative_line = hunk_parser.parse(path, line, hunk_data)
         print("=====================")
-        # hunk_parser.print_hunk_graph(hunk_data)
-        print(relative_line)
+        hunk_parser.print_hunk_graph(hunk_data)
+        print("relative_line {0}".format(relative_line))
 
     def review_comment(self, comment, line, path):
         """ Post review comment for this PR """
         url = self._generate_review_comment_url()
         commit_id = self.COMMIT_ID
-        data = self._get_diff_data()
+        data = self._diff_info
         hunk_data = diff_parser.parse(data, path)
         relative_line = hunk_parser.parse(path, line, hunk_data)
         if relative_line <= 0:
             print("line not fund")
             return
-        print(url)
         data = json.dumps({'body': comment, 'commit_id': commit_id, 'path': path, 'position':relative_line})
         r = requests.post(url, headers=self._headers, data=data)
-        print(r.text)
 
     def issue_comment(self, comment):
         """ Post issue comment for this PR """
